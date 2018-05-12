@@ -25,10 +25,14 @@ static void pblk_gc_free_gc_rq(struct pblk_gc_rq *gc_rq)
 	kfree(gc_rq);
 }
 
+// pblk->gc에서 w_list에 있는 요청을 꺼내서 gc_write를 실행
 static int pblk_gc_write(struct pblk *pblk)
 {
 	struct pblk_gc *gc = &pblk->gc;
 	struct pblk_gc_rq *gc_rq, *tgc_rq;
+
+	//#define LIST_HEAD(name) \
+		struct list_head name = LIST_HEAD_INIT(name)
 	LIST_HEAD(w_list);
 
 	spin_lock(&gc->w_lock);
@@ -36,7 +40,10 @@ static int pblk_gc_write(struct pblk *pblk)
 		spin_unlock(&gc->w_lock);
 		return 1;
 	}
+	// write할 것이 있다면 현재 gc->w_lock을 획득한 상태
 
+	// list가 circular-doubly list이기 때문에, 
+	// 아래 명령은 gc->w_list를 전부 w_list에 옮기는게 아닐까
 	list_cut_position(&w_list, &gc->w_list, gc->w_list.prev);
 	gc->w_entries = 0;
 	spin_unlock(&gc->w_lock);
@@ -51,6 +58,7 @@ static int pblk_gc_write(struct pblk *pblk)
 	return 0;
 }
 
+// gc_writer_ts를 시동하는 함수
 static void pblk_gc_writer_kick(struct pblk_gc *gc)
 {
 	wake_up_process(gc->gc_writer_ts);
@@ -267,6 +275,8 @@ fail_free_ws:
 	pr_err("pblk: Failed to GC line %d\n", line->id);
 }
 
+// 해당 line을 gc_reader_wq에 등재함
+// 성공시 0
 static int pblk_gc_line(struct pblk *pblk, struct pblk_line *line)
 {
 	struct pblk_gc *gc = &pblk->gc;
@@ -293,6 +303,7 @@ static void pblk_gc_reader_kick(struct pblk_gc *gc)
 	wake_up_process(gc->gc_reader_ts);
 }
 
+// gc를 시동하는 함수(kick은 "~을 시작하는 함수"에 쓰임)
 static void pblk_gc_kick(struct pblk *pblk)
 {
 	struct pblk_gc *gc = &pblk->gc;
@@ -308,6 +319,7 @@ static void pblk_gc_kick(struct pblk *pblk)
 	}
 }
 
+// r_list의 첫 line에 대해 gc를 시작
 static int pblk_gc_read(struct pblk *pblk)
 {
 	struct pblk_gc *gc = &pblk->gc;
@@ -576,6 +588,8 @@ int pblk_gc_init(struct pblk *pblk)
 	struct pblk_gc *gc = &pblk->gc;
 	int ret;
 
+	// ts : task struct
+	// kthread : kernel thread
 	gc->gc_ts = kthread_create(pblk_gc_ts, pblk, "pblk-gc-ts");
 	if (IS_ERR(gc->gc_ts)) {
 		pr_err("pblk: could not allocate GC main kthread\n");
@@ -599,12 +613,15 @@ int pblk_gc_init(struct pblk *pblk)
 	}
 
 	timer_setup(&gc->gc_timer, pblk_gc_timer, 0);
+	// timer modify
+	// cf) jiffy는 linux의 시간 단위
+	// http://hbisland.tistory.com/entry/kernel-시간관리
 	mod_timer(&gc->gc_timer, jiffies + msecs_to_jiffies(GC_TIME_MSECS));
 
 	gc->gc_active = 0;
 	gc->gc_forced = 0;
 	gc->gc_enabled = 1;
-	gc->w_entries = 0;
+	gc->w_entries = 0;			// TODO: w_entries의 의미?
 	atomic_set(&gc->read_inflight_gc, 0);
 	atomic_set(&gc->pipeline_gc, 0);
 
@@ -628,6 +645,7 @@ int pblk_gc_init(struct pblk *pblk)
 		goto fail_free_reader_line_wq;
 	}
 
+	// lock을 잡는 순서가 중요할까?
 	spin_lock_init(&gc->lock);
 	spin_lock_init(&gc->w_lock);
 	spin_lock_init(&gc->r_lock);

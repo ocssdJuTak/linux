@@ -224,28 +224,29 @@ struct pblk_gc {
 	/* These states are not protected by a lock since (i) they are in the
 	 * fast path, and (ii) they are not critical.
 	 */
-	int gc_active;
-	int gc_enabled;
-	int gc_forced;
+	int gc_active;			// gc동작중인가?
+	int gc_enabled;			// gc가능한 상태인가?
+	int gc_forced;			// gc forced인가?
 
 	struct task_struct *gc_ts;
 	struct task_struct *gc_writer_ts;
 	struct task_struct *gc_reader_ts;
 
-	struct workqueue_struct *gc_line_reader_wq;
+	struct workqueue_struct *gc_line_reader_wq;		// TODO: line_reader vs reader?
 	struct workqueue_struct *gc_reader_wq;
 
 	struct timer_list gc_timer;
 
 	struct semaphore gc_sem;
+								// TODO: inflight vs pipeline?
 	atomic_t read_inflight_gc; /* Number of lines with inflight GC reads */
 	atomic_t pipeline_gc;	   /* Number of lines in the GC pipeline -
 				    * started reads to finished writes
 				    */
 	int w_entries;
 
-	struct list_head w_list;
-	struct list_head r_list;
+	struct list_head w_list;	// write list?
+	struct list_head r_list;	// read list?
 
 	spinlock_t lock;
 	spinlock_t w_lock;
@@ -399,8 +400,8 @@ struct pblk_smeta {
 struct pblk_line {
 	struct pblk *pblk;
 	unsigned int id;		/* Line number corresponds to the
-					 * block line
-					 */
+							 * block line
+							 */
 	unsigned int seq_nr;		/* Unique line sequence number */
 
 	int state;			/* PBLK_LINESTATE_X */
@@ -578,8 +579,8 @@ struct pblk {
 	int min_write_pgs; /* Minimum amount of pages required by controller */
 	int max_write_pgs; /* Maximum amount of pages supported by controller */
 	int pgs_in_buffer; /* Number of pages that need to be held in buffer to
-			    * guarantee successful reads.
-			    */
+			    		* guarantee successful reads.
+			    		*/
 
 	sector_t capacity; /* Device capacity when bad blocks are subtracted */
 

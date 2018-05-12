@@ -521,6 +521,8 @@ struct wake_q_node {
 	struct wake_q_node *next;
 };
 
+//Each task_struct data structure describes a process or task in the system. 
+//https://www.tldp.org/LDP/tlk/ds/ds.html
 struct task_struct {
 #ifdef CONFIG_THREAD_INFO_IN_TASK
 	/*

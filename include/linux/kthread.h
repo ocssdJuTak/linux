@@ -23,6 +23,11 @@ struct task_struct *kthread_create_on_node(int (*threadfn)(void *data),
  * the stopped state.  This is just a helper for kthread_create_on_node();
  * see the documentation there for more details.
  */
+/**
+ *  The kernel often required in some operations perform background, 
+ *  this task can use the kernel threads (kernle thread) 
+ *  http://www.programering.com/a/MDN4IjMwATk.html
+ */
 #define kthread_create(threadfn, data, namefmt, arg...) \
 	kthread_create_on_node(threadfn, data, NUMA_NO_NODE, namefmt, ##arg)
 
