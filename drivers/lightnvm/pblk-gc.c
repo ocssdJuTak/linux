@@ -53,6 +53,7 @@ static int pblk_gc_write(struct pblk *pblk)
 		list_del(&gc_rq->list);
 		kref_put(&gc_rq->line->ref, pblk_line_put);
 		pblk_gc_free_gc_rq(gc_rq);
+
 	}
 
 	return 0;
